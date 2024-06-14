@@ -2,7 +2,6 @@ import unittest
 from datetime import datetime, timedelta
 from booking_scheduler import BookingScheduler
 from schedule import Customer, Schedule
-
 from communication_test import TestableSmsSender, TestableMailSender
 
 ON_THE_HOUR = datetime.strptime("2021/03/26 09:00", "%Y/%m/%d %H:%M")
@@ -36,7 +35,7 @@ class TestableBookingScheduler(BookingScheduler):
 
     def get_now(self):
         return datetime.strptime(self._date_time, "%Y/%m/%d %H:%M")
-
+      
 
 class BookingSchedulerTest(unittest.TestCase):
     def setUp(self):
@@ -48,17 +47,39 @@ class BookingSchedulerTest(unittest.TestCase):
         self.testable_mail_sender = TestableMailSender()
         self.booking_scheduler.set_mail_sender(self.testable_mail_sender)
 
+    def setUp(self):
+        self.booking_scheduler = BookingScheduler(CAPACITY_PER_HOUR)
+
     def test_예약은_정시에만_가능하다_정시가_아닌경우_예약불가(self):
-        pass
+        schedule = Schedule(NOT_ON_THE_HOUR, UNDER_CAPACITY, CUSTOMER)
+        with self.assertRaises(ValueError):
+            self.booking_scheduler.add_schedule(schedule)
 
     def test_예약은_정시에만_가능하다_정시인_경우_예약가능(self):
-        pass
+        schedule = Schedule(ON_THE_HOUR, UNDER_CAPACITY, CUSTOMER)
+        self.booking_scheduler.add_schedule(schedule)
+
+        self.assertTrue(self.booking_scheduler.has_schedule(schedule))
 
     def test_시간대별_인원제한이_있다_같은_시간대에_Capacity_초과할_경우_예외발생(self):
-        pass
+        schedule = Schedule(ON_THE_HOUR, CAPACITY_PER_HOUR, CUSTOMER)
+        self.booking_scheduler.add_schedule(schedule)
+
+        with self.assertRaises(ValueError) as context:
+            new_schedule = Schedule(ON_THE_HOUR, UNDER_CAPACITY, CUSTOMER)
+            self.booking_scheduler.add_schedule(new_schedule)
+
+        self.assertTrue("Number of people is over restaurant capacity per hour", str(context.exception))
 
     def test_시간대별_인원제한이_있다_같은_시간대가_다르면_Capacity_차있어도_스케쥴_추가_성공(self):
-        pass
+        schedule = Schedule(ON_THE_HOUR, CAPACITY_PER_HOUR, CUSTOMER)
+        self.booking_scheduler.add_schedule(schedule)
+
+        different_hour = ON_THE_HOUR + timedelta(hours=1)
+        new_schedule = Schedule(different_hour, UNDER_CAPACITY, CUSTOMER)
+        self.booking_scheduler.add_schedule(new_schedule)
+
+        self.assertTrue(self.booking_scheduler.has_schedule(new_schedule))
 
     def test_예약완료시_SMS는_무조건_발송(self):
         schedule = Schedule(ON_THE_HOUR, UNDER_CAPACITY, CUSTOMER)
