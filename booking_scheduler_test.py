@@ -1,5 +1,7 @@
 import unittest
 from datetime import datetime, timedelta
+from unittest.mock import Mock, patch
+
 from booking_scheduler import BookingScheduler
 from schedule import Customer, Schedule
 from communication_test import TestableSmsSender, TestableMailSender
@@ -35,7 +37,7 @@ class TestableBookingScheduler(BookingScheduler):
 
     def get_now(self):
         return datetime.strptime(self._date_time, "%Y/%m/%d %H:%M")
-      
+
 
 class BookingSchedulerTest(unittest.TestCase):
     def setUp(self):
@@ -46,9 +48,6 @@ class BookingSchedulerTest(unittest.TestCase):
 
         self.testable_mail_sender = TestableMailSender()
         self.booking_scheduler.set_mail_sender(self.testable_mail_sender)
-
-    def setUp(self):
-        self.booking_scheduler = BookingScheduler(CAPACITY_PER_HOUR)
 
     def test_예약은_정시에만_가능하다_정시가_아닌경우_예약불가(self):
         schedule = Schedule(NOT_ON_THE_HOUR, UNDER_CAPACITY, CUSTOMER)
@@ -102,10 +101,8 @@ class BookingSchedulerTest(unittest.TestCase):
 
         self.assertEqual(self.testable_mail_sender.get_count_send_mail_is_called(), 1)
 
-    def test_현재날짜가_일요일인_경우_예약불가_예외처리(self):
-        # self.booking_scheduler = SundayBookingScheduler(CAPACITY_PER_HOUR)
-        self.booking_scheduler = TestableBookingScheduler(CAPACITY_PER_HOUR, "2024/06/09 17:00")
-
+    @patch.object(BookingScheduler, 'get_now', return_value=datetime.strptime("2024/06/09 08:00", "%Y/%m/%d %H:%M"))
+    def test_현재날짜가_일요일인_경우_예약불가_예외처리(self, mock):
         with self.assertRaises(ValueError) as context:
             new_schedule = Schedule(ON_THE_HOUR, UNDER_CAPACITY, CUSTOMER_WITH_MAIL)
             self.booking_scheduler.add_schedule(new_schedule)
